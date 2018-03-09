@@ -2,8 +2,7 @@
 
 namespace app\index\controller;
 
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use Predis\Client;
+use PhpOffice\PhpSpreadsheet\Reader\Xlsx;
 
 class User extends Base
 {
@@ -18,7 +17,7 @@ class User extends Base
         if (self::$redis->llen('filePath') != 0) {
             $fileNames = self::$redis->lrange('filePath', 0, -1);
             foreach ($fileNames as $key => $value) {
-               $this->handleUserFile($value);
+               return $this->handleUserFile($value);
             }
         }
     }
@@ -30,6 +29,8 @@ class User extends Base
 
     public function handleUserFile($fileName)
     {
-
+        $reader = new Xlsx();
+        $spreadsheet = $reader->load($fileName);
+        dump($spreadsheet);
     }
 }
