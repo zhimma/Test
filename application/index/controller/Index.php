@@ -5,15 +5,7 @@ class Index extends Base
 {
     public function index()
     {
-       /* for ($i = 1;$i<10;$i++){
-            self::$redis->lpush('filePath',$i);
-        }*/
-        /*if (self::$redis->llen('filePath') != 0) {
-            $data = self::$redis->lrange('filePath',0,-1);
-            foreach ($data as $key => $value){
-                echo self::$redis->lpop('filePath');
-            }
-        }*/
+        self::$redis->flushdb();
         return view('index');
     }
 
@@ -27,9 +19,7 @@ class Index extends Base
     public function upload()
     {
         $file = request()->file('file');
-        dump($file);
         $fileMd5 = md5_file($file->getPathname());
-        dump($fileMd5);
         //查询数据库  判断文件是否上传过
        /* if($fileMd5 == 'e221f1dd892baf7861ea8babb956e14b'){
             return '此文件已经上传';
@@ -45,10 +35,5 @@ class Index extends Base
                 echo $file->getError();
             }
         }
-    }
-
-    public function test()
-    {
-        echo "it's work";
     }
 }

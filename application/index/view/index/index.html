@@ -47,7 +47,7 @@
         flash_swf_url : static+'/js/Moxie.swf',
         silverlight_xap_url : static+'/js/Moxie.xap',
         filters : {
-            max_file_size : '100mb',
+            max_file_size : '120mb',
             /*mime_types: [
                 {title : "Image files", extensions : "jpg,gif,png"},
                 {title : "Zip files", extensions : "zip"}
@@ -70,6 +70,8 @@
             },
 
             Error: function(up, err) {
+                console.log(err.msg);
+
             }
         }
     });
