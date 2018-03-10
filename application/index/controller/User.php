@@ -19,7 +19,7 @@ class User extends Base
             foreach ($fileNames as $key => $value) {
                 $this->handleUserFile($value);
             }
-            echo "parse filePath end";
+            self::$redis->lpush('status',1);
         }
     }
 
@@ -89,7 +89,7 @@ class User extends Base
      */
     public function handleUserStore()
     {
-        if (self::$redis->llen('userInfo') != 0) {
+        if (self::$redis->lpop('status') == 1) {
             echo "parse userInfo";
             $userData = self::$redis->lrange('userInfo', 0, -1);
             $chunkData = array_chunk($userData, 5000);
@@ -116,6 +116,7 @@ class User extends Base
         //手机号已存在
         if (!(self::$redis->sadd('userPhone', $userData[2])) || empty($userData[2]) || !isset($userData[2])) {
             //存入hash表 值存在 将覆盖
+            self::$redis->set('a',json_encode($userData));
             self::$redis->hset('hasSomethingWrongUser', $userData[1], json_encode($userData));
 
             return [];

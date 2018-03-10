@@ -5,7 +5,8 @@ class Index extends Base
 {
     public function index()
     {
-        self::$redis->flushdb();
+//        self::$redis->flushdb();
+        self::$redis->lpush('status',1);
         return view('index');
     }
 
