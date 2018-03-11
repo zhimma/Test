@@ -3,23 +3,41 @@
 namespace app\index\controller;
 
 
+use think\Db;
+use think\Session;
+
 class User extends Base
 {
+    public function index($p = 1)
+    {
+        $data = Db::table('users')->page($p, 10)->select();
+
+        return json(['status' => 1, 'data' => $data]);
+    }
+
+    public function getUploadDetail()
+    {
+        $user_id = Session::get('user_id');
+        $successCount = self::$redis->hget('save_mysql_result_count', $user_id);
+        $errorCount = self::$redis->hget('has_something_wrong_user_count', $user_id);
+
+        return json(['status' => 1, 'data' => ['success' => $successCount, 'error' => $errorCount]]);
+    }
+
+
     /**
      * 监测¬文件上传队列
      *
      * @author mma5694@gmail.com
      * @date   2018年3月9日18:57:20
      */
-    public function index()
+    public function parseUserFile()
     {
-        if (self::$redis->llen('filePath') != 0) {
-            echo "parse filePath";
-            $fileNames = self::$redis->lrange('filePath', 0, -1);
+        if (self::$redis->llen('file_path') != 0) {
+            $fileNames = self::$redis->lrange('file_path', 0, -1);
             foreach ($fileNames as $key => $value) {
-                $this->handleUserFile($value);
+                $this->cacheUserData($value);
             }
-            self::$redis->lpush('status',1);
         }
     }
 
@@ -29,18 +47,112 @@ class User extends Base
      * @author 马雄飞 <mma5694@gmail.com>
      * @date   2018年03月10日15:55:31
      */
-    public function handleUserFile($fileName = '')
+    protected function cacheUserData($fileName = '')
     {
-        $excelData = file($fileName);
+        $fileInfo = explode('_', $fileName);
+        $userId = $fileInfo[0];
+        $filePath = $fileInfo[1];
+        $excelData = file($filePath);
         $chunkData = array_chunk($excelData, 5000); // 将这个10W+ 的数组分割成5000一个的小数组。这样就一次批量插入5000条数据。mysql 是支持的。
         $count = count($chunkData);
         for ($i = 0; $i < $count; $i++) {
             foreach ($chunkData[$i] as $value) {
                 $encode = mb_detect_encoding($value, ["ASCII", 'UTF-8', "GB2312", "GBK", 'BIG5']);
                 $string = mb_convert_encoding(trim(strip_tags($value)), 'UTF-8', $encode);
-                self::$redis->lpush('userInfo', json_encode(explode(',', $string)));
+                self::$redis->lpush('user_info' . '_' . $userId, serialize(explode(',', $string)));
             }
         }
+        //将本用户的id 和 数据队列 存入 set中
+        self::$redis->hset('list_user_relation', $userId, 'user_info' . '_' . $userId);
+        //删除文件路径
+        self::$redis->lrem('file_path', 1, $fileName);
+    }
+
+    /**
+     * 缓存数据入库
+     *
+     * @author 马雄飞 <xiongfei.ma@pactera.com>
+     * @date   2018年03月10日15:57:28
+     */
+    public function userDataStore()
+    {
+        $dataList = self::$redis->hgetall('list_user_relation');
+        foreach ($dataList as $key => $value) {
+            $userData = self::$redis->lrange($value, 0, -1);
+            $chunkData = array_chunk($userData, 5000);
+            $count = count($chunkData);
+            for ($i = 0; $i < $count; $i++) {
+                $insertData = [];
+                foreach ($chunkData[$i] as $val) {
+                    if (!empty($val)) {
+                        $user = $this->validateAndSave(unserialize($val), $key);
+                        if (!empty($user)) {
+                            array_push($insertData, $user);
+                        }
+                    }
+                }
+                //保存数据库
+                $insertCount = Db::name('users')->insertAll($insertData);
+                self::$redis->hset('save_mysql_result', $key . '_' . $i, $insertCount);
+                self::$redis->hincrby('save_mysql_result_count', $key, $insertCount);
+            }
+            //删除队列
+            self::$redis->del($value);
+            //删除list_user_relation
+            self::$redis->hdel('list_user_relation', $key);
+
+        }
+    }
+
+    /**
+     * 验证数据  返回合格的可入库数据
+     *
+     * @param $userData
+     * @param $userId
+     *
+     * @return array
+     *
+     * @author 马雄飞 <xiongfei.ma@pactera.com>
+     * @date   2018-03-11 13:37:49
+     */
+    protected function validateAndSave($userData, $userId)
+    {
+        //去除csv多余引号
+        $userData = array_map(function ($value) {
+            return str_replace('"', '', $value);
+        }, $userData);
+        //不能写入集合
+        if (!self::$redis->sadd('user_phone', $userData[2]) || !isset($userData[2]) || empty($userData[2]) || !$this->validatePhone($userData[2])) {
+            //存入hash表 值存在 将覆盖
+            self::$redis->hset('has_something_wrong_user', $userId . '_' . $userData[0], serialize($userData));
+            self::$redis->hincrby('has_something_wrong_user_count', $userId, 1);
+
+            return [];
+        } else {
+            return [
+                'name'        => $userData[1],
+                'phone'       => $userData[2],
+                'sex'         => intval($userData[3]),
+                'create_time' => intval($userData[4]),
+                'update_time' => intval($userData[5])
+            ];
+        }
+
+    }
+
+    /**
+     * 正则验证手机号
+     *
+     * @param $phone
+     *
+     * @return false|int
+     *
+     * @author 马雄飞 <xiongfei.ma@pactera.com>
+     * @date   2018年03月11日18:18:19
+     */
+    public function validatePhone($phone)
+    {
+        return preg_match("/^1[34578]{1}\d{9}$/", $phone);
     }
 
     /**
@@ -70,7 +182,7 @@ class User extends Base
                     foreach ($chunkData[$i] as $value) {
                         $encode = mb_detect_encoding($value, ["ASCII", 'UTF-8', "GB2312", "GBK", 'BIG5']);
                         $string = mb_convert_encoding(trim(strip_tags($value)), 'UTF-8', $encode);
-                        self::$redis->lpush('userInfo', json_encode(explode(',', $string)));
+                        self::$redis->lpush('userInfo', serialize(explode(',', $string)));
                     }
                 }
             }
@@ -79,55 +191,5 @@ class User extends Base
             $status = pcntl_wexitstatus($status);
         }
         exit;
-    }
-
-    /**
-     * 缓存数据入库
-     *
-     * @author 马雄飞 <xiongfei.ma@pactera.com>
-     * @date   2018年03月10日15:57:28
-     */
-    public function handleUserStore()
-    {
-        if (self::$redis->lpop('status') == 1) {
-            echo "parse userInfo";
-            $userData = self::$redis->lrange('userInfo', 0, -1);
-            $chunkData = array_chunk($userData, 5000);
-            $count = count($chunkData);
-            for ($i = 0; $i < $count; $i++) {
-                $insertData = [];
-                foreach ($chunkData[$i] as $value) {
-                    if (!empty($value)) {
-                        $user = $this->validateAndSave(json_decode($value, true));
-                        if (!empty($user)) {
-                            array_push($insertData, $user);
-                        }
-                    }
-                }
-                //保存数据库
-            }
-            echo "parse userInfo end";
-
-        }
-    }
-
-    public function validateAndSave($userData)
-    {
-        //手机号已存在
-        if (!(self::$redis->sadd('userPhone', $userData[2])) || empty($userData[2]) || !isset($userData[2])) {
-            //存入hash表 值存在 将覆盖
-            self::$redis->set('a',json_encode($userData));
-            self::$redis->hset('hasSomethingWrongUser', $userData[1], json_encode($userData));
-
-            return [];
-        } else {
-            return [
-                'name'        => $userData[1],
-                'phone'       => $userData[2],
-                'sex'         => $userData[3],
-                'create_time' => $userData[4],
-                'update_time' => $userData[5]
-            ];
-        }
     }
 }

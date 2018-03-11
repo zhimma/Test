@@ -4,6 +4,7 @@ namespace app\index\controller;
 
 use Predis\Client;
 use think\Controller;
+use think\Session;
 
 class Base extends Controller
 {
@@ -14,6 +15,7 @@ class Base extends Controller
      */
     public function __construct()
     {
+        Session::set('user_id',2);
         if (is_null(self::$redis)) {
             $server = array(
                 'host'     => '127.0.0.1',
