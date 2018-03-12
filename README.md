@@ -8,7 +8,7 @@
 ```post_max_size = 2M  
 upload_max_filesize = 2M 
 ```
-3. 定时任务
+3. 定时任
 
 ```
 */1 * * * * /usr/local/bin/php /data/www/Test/public/index.php index/user/parseUserFile

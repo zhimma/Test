@@ -8,6 +8,16 @@ use think\Session;
 
 class User extends Base
 {
+    /**
+     * 用户列表
+     *
+     * @param int $p
+     *
+     * @return \think\response\Json
+     *
+     * @author mma5694@gmail.com
+     * @date   2018年3月12日10:36:21
+     */
     public function index($p = 1)
     {
         $data = Db::table('users')->page($p, 10)->select();
@@ -15,6 +25,14 @@ class User extends Base
         return json(['status' => 1, 'data' => $data]);
     }
 
+    /**
+     * 用户上传详情
+     *
+     * @return \think\response\Json
+     *
+     * @author mma5694@gmail.com
+     * @date   2018-3-12 10:36:40
+     */
     public function getUploadDetail()
     {
         $user_id = Session::get('user_id');
@@ -33,7 +51,9 @@ class User extends Base
      */
     public function parseUserFile()
     {
+        //判断队列中是否有新文件
         if (self::$redis->llen('file_path') != 0) {
+            //获取所有文件路径
             $fileNames = self::$redis->lrange('file_path', 0, -1);
             foreach ($fileNames as $key => $value) {
                 $this->cacheUserData($value);
@@ -44,16 +64,19 @@ class User extends Base
     /**
      * 新文件上传后  数据写入redis 队列
      *
-     * @author 马雄飞 <mma5694@gmail.com>
-     * @date   2018年03月10日15:55:31
+     * @param string $fileName
+     *
+     * @author mma5694@gmail.com
+     * @date   2018年3月12日11:18:28
      */
     protected function cacheUserData($fileName = '')
     {
         $fileInfo = explode('_', $fileName);
         $userId = $fileInfo[0];
         $filePath = $fileInfo[1];
+        //读取文件
         $excelData = file($filePath);
-        $chunkData = array_chunk($excelData, 5000); // 将这个10W+ 的数组分割成5000一个的小数组。这样就一次批量插入5000条数据。mysql 是支持的。
+        $chunkData = array_chunk($excelData, 5000);
         $count = count($chunkData);
         for ($i = 0; $i < $count; $i++) {
             foreach ($chunkData[$i] as $value) {
@@ -71,14 +94,17 @@ class User extends Base
     /**
      * 缓存数据入库
      *
-     * @author 马雄飞 <xiongfei.ma@pactera.com>
+     * @author 马雄飞 <mma5694@gmail.com>
      * @date   2018年03月10日15:57:28
      */
     public function userDataStore()
     {
+
+        //从hash中读取文件
         $dataList = self::$redis->hgetall('list_user_relation');
         foreach ($dataList as $key => $value) {
             $userData = self::$redis->lrange($value, 0, -1);
+            // 将这个10W+ 的数组分割成5000一个的小数组。这样就一次批量插入5000条数据。mysql 是支持的。
             $chunkData = array_chunk($userData, 5000);
             $count = count($chunkData);
             for ($i = 0; $i < $count; $i++) {
@@ -112,7 +138,7 @@ class User extends Base
      *
      * @return array
      *
-     * @author 马雄飞 <xiongfei.ma@pactera.com>
+     * @author 马雄飞 <mma5694@gmail.com>
      * @date   2018-03-11 13:37:49
      */
     protected function validateAndSave($userData, $userId)
@@ -128,15 +154,15 @@ class User extends Base
             self::$redis->hincrby('has_something_wrong_user_count', $userId, 1);
 
             return [];
-        } else {
-            return [
-                'name'        => $userData[1],
-                'phone'       => $userData[2],
-                'sex'         => intval($userData[3]),
-                'create_time' => intval($userData[4]),
-                'update_time' => intval($userData[5])
-            ];
         }
+
+        return [
+            'name'        => $userData[1],
+            'phone'       => $userData[2],
+            'sex'         => intval($userData[3]),
+            'create_time' => intval($userData[4]),
+            'update_time' => intval($userData[5])
+        ];
 
     }
 
@@ -147,7 +173,7 @@ class User extends Base
      *
      * @return false|int
      *
-     * @author 马雄飞 <xiongfei.ma@pactera.com>
+     * @author 马雄飞 <mma5694@gmail.com>
      * @date   2018年03月11日18:18:19
      */
     public function validatePhone($phone)
