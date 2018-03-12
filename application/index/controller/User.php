@@ -2,7 +2,6 @@
 
 namespace app\index\controller;
 
-
 use think\Db;
 use think\Session;
 
@@ -82,7 +81,7 @@ class User extends Base
             foreach ($chunkData[$i] as $value) {
                 $encode = mb_detect_encoding($value, ["ASCII", 'UTF-8', "GB2312", "GBK", 'BIG5']);
                 $string = mb_convert_encoding(trim(strip_tags($value)), 'UTF-8', $encode);
-                self::$redis->lpush('user_info' . '_' . $userId, serialize(explode(',', $string)));
+                self::$redis->lpush('user_info' . '_' . $userId, explode(',', $string));
             }
         }
         //将本用户的id 和 数据队列 存入 set中
@@ -148,7 +147,9 @@ class User extends Base
             return str_replace('"', '', $value);
         }, $userData);
         //不能写入集合
-        if (!self::$redis->sadd('user_phone', $userData[2]) || !isset($userData[2]) || empty($userData[2]) || !$this->validatePhone($userData[2])) {
+        if (!self::$redis->sadd('user_phone', $userData[2])
+            || !isset($userData[2]) || empty($userData[2])
+            || !$this->validatePhone($userData[2])) {
             //存入hash表 值存在 将覆盖
             self::$redis->hset('has_something_wrong_user', $userId . '_' . $userData[0], serialize($userData));
             self::$redis->hincrby('has_something_wrong_user_count', $userId, 1);
@@ -163,7 +164,6 @@ class User extends Base
             'create_time' => intval($userData[4]),
             'update_time' => intval($userData[5])
         ];
-
     }
 
     /**
@@ -183,6 +183,7 @@ class User extends Base
 
     /**
      * 新文件上传后  数据写入redis 队列
+     * @param $fileName
      *
      * @author 马雄飞 <mma5694@gmail.com>
      * @date   2018年03月10日15:55:31
