@@ -28,4 +28,5 @@ shell_exec('gsplit -a 3 -d -l 20000 ' . $fileName . ' '  . 'user_')
 ```
 
 5. 运行图
-![运行流程][http://somethings.oss-cn-shanghai.aliyuncs.com/logic.png]
+
+![运行流程](http://somethings.oss-cn-shanghai.aliyuncs.com/logic.png)
