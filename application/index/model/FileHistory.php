@@ -29,6 +29,5 @@ class FileHistory extends Model
         } else {
             return false;
         }
-
     }
 }

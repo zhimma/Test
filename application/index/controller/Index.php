@@ -19,10 +19,6 @@ class Index extends Base
     public function index()
     {
         self::$redis->flushdb();
-
-        /*$fileName = '/data/www/Test/public/user.csv';
-        shell_exec('gsplit -a 3 -d -l 20000 ' . $fileName . ' '  . 'user_');*/
-
         return view('index');
     }
 
@@ -41,19 +37,19 @@ class Index extends Base
             if (!$file) {
                 throw new Exception('上传失败');
             }
-            //判断文件是否曾上传过
+            // 判断文件是否曾上传过
             $model = new FileHistory();
             $res = $model->fileExist(md5_file($file->getPathname()));
             if (!$res) {
                 throw new Exception('错误，此文件数据已保存');
             }
             // 移动到框架应用根目录/public/uploads/ 目录下
-            //文件是否保存成功
+            // 文件是否保存成功
             $info = $file->move(ROOT_PATH . 'public' . DS . 'uploads');
             if (!$info) {
                 throw new Exception($file->getError());
             }
-            //文件信息写入队列
+            // 文件信息写入队列
             self::$redis->lpush('file_path', Session::get('user_id') . '_' . $info->getPathname());
 
             return json(['status' => 1, 'msg' => '上传成功，请稍后查询结果']);

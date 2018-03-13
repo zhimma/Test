@@ -50,9 +50,9 @@ class User extends Base
      */
     public function parseUserFile()
     {
-        //判断队列中是否有新文件
+        // 判断队列中是否有新文件
         if (self::$redis->llen('file_path') != 0) {
-            //获取所有文件路径
+            // 获取所有文件路径
             $fileNames = self::$redis->lrange('file_path', 0, -1);
             foreach ($fileNames as $key => $value) {
                 $this->cacheUserData($value);
@@ -73,7 +73,7 @@ class User extends Base
         $fileInfo = explode('_', $fileName);
         $userId = $fileInfo[0];
         $filePath = $fileInfo[1];
-        //读取文件
+        // 读取文件
         $excelData = file($filePath);
         $chunkData = array_chunk($excelData, 5000);
         $count = count($chunkData);
@@ -84,9 +84,9 @@ class User extends Base
                 self::$redis->lpush('user_info' . '_' . $userId, serialize(explode(',', $string)));
             }
         }
-        //将本用户的id 和 数据队列 存入 set中
+        // 将本用户的id 和 数据队列 存入 set中
         self::$redis->hset('list_user_relation', $userId, 'user_info' . '_' . $userId);
-        //删除文件路径
+        // 删除文件路径
         self::$redis->lrem('file_path', 1, $fileName);
     }
 
@@ -99,7 +99,7 @@ class User extends Base
     public function userDataStore()
     {
 
-        //从hash中读取文件
+        // 从hash中读取文件
         $dataList = self::$redis->hgetall('list_user_relation');
         foreach ($dataList as $key => $value) {
             $userData = self::$redis->lrange($value, 0, -1);
@@ -116,14 +116,14 @@ class User extends Base
                         }
                     }
                 }
-                //保存数据库
+                // 保存数据库
                 $insertCount = Db::name('users')->insertAll($insertData);
                 self::$redis->hset('save_mysql_result', $key . '_' . $i, $insertCount);
-                self::$redis->hincrby('save_mysql_result_count', $key, $insertCount);
+                self::$redis->hincrby('save_mysql_result_count', $key, intval($insertCount));
             }
-            //删除队列
+            // 删除队列
             self::$redis->del($value);
-            //删除list_user_relation
+            // 删除list_user_relation
             self::$redis->hdel('list_user_relation', $key);
 
         }
@@ -183,6 +183,7 @@ class User extends Base
 
     /**
      * 新文件上传后  数据写入redis 队列
+     *
      * @param $fileName
      *
      * @author 马雄飞 <mma5694@gmail.com>
