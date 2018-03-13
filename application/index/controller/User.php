@@ -81,7 +81,7 @@ class User extends Base
             foreach ($chunkData[$i] as $value) {
                 $encode = mb_detect_encoding($value, ["ASCII", 'UTF-8', "GB2312", "GBK", 'BIG5']);
                 $string = mb_convert_encoding(trim(strip_tags($value)), 'UTF-8', $encode);
-                self::$redis->lpush('user_info' . '_' . $userId, explode(',', $string));
+                self::$redis->lpush('user_info' . '_' . $userId, serialize(explode(',', $string)));
             }
         }
         //将本用户的id 和 数据队列 存入 set中

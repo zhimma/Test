@@ -1,6 +1,7 @@
 ##README
 
 1. 修改Nginx配置文件
+>413 Request Entity Too Large
 
 Nginx 设置上传文件大小，打开Nginx主配置文件nginx.conf,找到http{}段并修改以下内容：
 `client_max_body_size 128m;` 设置为指定的大小

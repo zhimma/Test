@@ -54,7 +54,7 @@ class Index extends Base
                 throw new Exception($file->getError());
             }
             //文件信息写入队列
-            self::$redis->lpush('file_path', array(Session::get('user_id') . '_' . $info->getPathname()));
+            self::$redis->lpush('file_path', Session::get('user_id') . '_' . $info->getPathname());
 
             return json(['status' => 1, 'msg' => '上传成功，请稍后查询结果']);
 
