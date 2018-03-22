@@ -15,7 +15,7 @@ use think\Session;
 class Base extends Controller
 {
     protected static $redis = null;
-
+    protected static $client;
     /**
      * 初始化
      * Base constructor.
@@ -33,5 +33,8 @@ class Base extends Controller
         } else {
             return self::$redis;
         }
+
+        self::$client = new \swoole_client(SWOOLE_SOCK_TCP);
+        self::$client->connect("127.0.0.1", 9501);
     }
 }

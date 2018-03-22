@@ -38,19 +38,24 @@ class Index extends Base
                 throw new Exception('上传失败');
             }
             // 判断文件是否曾上传过
-            $model = new FileHistory();
+            /*$model = new FileHistory();
             $res = $model->fileExist(md5_file($file->getPathname()));
             if (!$res) {
                 throw new Exception('错误，此文件数据已保存');
-            }
+            }*/
             // 移动到框架应用根目录/public/uploads/ 目录下
             // 文件是否保存成功
             $info = $file->move(ROOT_PATH . 'public' . DS . 'uploads');
             if (!$info) {
                 throw new Exception($file->getError());
             }
+            $fileName = Session::get('user_id') . '_' . $info->getPathname();
+            self::$client->send($fileName);
+
             // 文件信息写入队列
-            self::$redis->lpush('file_path', Session::get('user_id') . '_' . $info->getPathname());
+//            self::$redis->lpush('file_path', Session::get('user_id') . '_' . $info->getPathname());
+
+
 
             return json(['status' => 1, 'msg' => '上传成功，请稍后查询结果']);
 
