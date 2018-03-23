@@ -2,9 +2,10 @@
 
 namespace app\index\controller;
 
-use app\index\model\FileHistory;
+use app\task\DemoTask;
 use think\Exception;
 use think\Session;
+use thinkSwoole\Client;
 
 class Index extends Base
 {
@@ -18,19 +19,19 @@ class Index extends Base
      */
     public function index()
     {
-        self::$redis->flushdb();
         return view('index');
     }
 
     /**
      * 文件上传处理
+     * @param Client $client
      *
      * @return \think\response\Json
      *
      * @author mma5694@gmail.com
-     * @date   2018年3月12日17:10:16
+     * @date 2018年3月23日14:28:07
      */
-    public function upload()
+    public function upload(Client $client)
     {
         try {
             $file = request()->file('file');
@@ -50,13 +51,7 @@ class Index extends Base
                 throw new Exception($file->getError());
             }
             $fileName = Session::get('user_id') . '_' . $info->getPathname();
-            self::$client->send($fileName);
-
-            // 文件信息写入队列
-//            self::$redis->lpush('file_path', Session::get('user_id') . '_' . $info->getPathname());
-
-
-
+            $client->sendTo(DemoTask::class,$fileName);
             return json(['status' => 1, 'msg' => '上传成功，请稍后查询结果']);
 
         } catch (Exception $e) {
