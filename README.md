@@ -41,3 +41,57 @@ shell_exec('gsplit -a 3 -d -l 20000 ' . $fileName . ' '  . 'user_')
 6. 运行图
 
 ![运行流程](http://somethings.oss-cn-shanghai.aliyuncs.com/logic.png)
+
+
+
+2018.3.23
+## swoole 处理异步任务
+> 需要swoole扩展,redis扩展
+### 运行swoole服务
+`php think swoole`
+### 上传文件，
+文件上传成功后，具体处理如下：
+
+```PHP
+向服务器传递文件名和具体处理的类名称
+
+Index.PHP
+public function upload(Client $client)
+{
+        ...
+    $client->sendTo(DemoTask::class,$fileName);
+        ...
+}
+```
+```PHP
+server 接收任务，并调用具体处理类
+
+Server.php
+public function onReceive(\swoole_server $server, $fd, $from_id, $data)
+{
+    echo "worker接收任务" .PHP_EOL;
+    $server->task($data);
+}
+
+public function onTask($server, $task_id, $from_id, $data)
+{
+    echo "Task接收任务，调用handle" .PHP_EOL;
+    $task = json_decode($data);
+    $class = $task->class;
+    $object = new $class($server,$task->data);
+    $object->handle();
+}
+```
+```php
+具体处理任务类
+
+DemoTask.php
+public function handle()
+{
+    echo "handle接收任务" .PHP_EOL;
+    if($this->cacheUserData($this->data)){
+       $this->userDataStore();
+   }
+}
+```
+
