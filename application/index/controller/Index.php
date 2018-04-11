@@ -19,6 +19,7 @@ class Index extends Base
      */
     public function index()
     {
+        self::$redis->flushdb();
         return view('index');
     }
 
